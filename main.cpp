@@ -26,8 +26,8 @@ double minx = -2.0;
 double miny = -1.5;
 double maxx = 1.0;
 double maxy = 1.5;
-int width = 4096;
-int height = 4096;
+int width = 1024;
+int height = 1024;
 
 int maxIterations = 1000;
 
@@ -76,10 +76,6 @@ RgbColor HsvToRgb(HsvColor hsv)
     return rgb;
 }
 
-void paintPix(int x, int y, HsvColor hsvColor) {
-
-}
-
 std::tuple<double, double> normalizeToViewRectangle(int pX, int pY, double minX, double minY, double maxX, double maxY) {
     double cX = pX * ((maxX - minX) / width) + minX;
     double cY = pY * ((maxY - minY) / height) + minY;
@@ -111,14 +107,26 @@ int main (int argc, char *argv[]) {
     image = new u_int16_t[width * height];
 
     double startTime = omp_get_wtime();
-#pragma omp parallel for collapse(2) shared(width,height) default(none)
     for(int x = 0; x < width; x++) {
         for(int y = 0; y < height; y++) {
             calcPix(x, y);
         }
     }
     double endTime = omp_get_wtime();
-    printf("Calc Time: %f\n", endTime - startTime);
+    double Ts = endTime - startTime;
+    printf("Serial Calc Time: %f\n", Ts);
+
+    startTime = omp_get_wtime();
+#pragma omp parallel for collapse(2) shared(width,height) default(none) schedule(static,16)
+    for(int x = 0; x < width; x++) {
+        for(int y = 0; y < height; y++) {
+            calcPix(x, y);
+        }
+    }
+    endTime = omp_get_wtime();
+    double Tn = endTime - startTime;
+    printf("Parallel Calc Time: %f\n", Tn);
+    printf("Ts/Tn: %f\n", Ts/Tn);
 
     startTime = omp_get_wtime();
     tga::TGAImage tgaImage;

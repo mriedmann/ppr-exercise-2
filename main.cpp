@@ -20,7 +20,7 @@ typedef struct HsvColor
     unsigned char v;
 } HsvColor;
 
-u_int16_t* image;
+RgbColor* image;
 
 double minx = -2.0;
 double miny = -1.5;
@@ -93,18 +93,21 @@ void calcPix (int px, int py) {
         double y = (zy * zx + zx * zy ) + cy;
         if (( x * x + y * y ) > 4) {
             // diverge , produce nice color
-            image[px * width + py] = n;
+            auto h = (unsigned char)(log(1.0 + n) / log(1.0 + maxIterations) * 255);
+            HsvColor hsvColor = { h, 255, 255 };
+            RgbColor rgbColor = HsvToRgb(hsvColor);
+            image[px * width + py] = rgbColor;
             return;
         }
         zx = x;
         zy = y;
     }
     // no diverge, print black
-    image[px * width + py] = UINT16_MAX;
+    image[px * width + py] = {0,0,0};
 }
 
 int main (int argc, char *argv[]) {
-    image = new u_int16_t[width * height];
+    image = new RgbColor[width * height];
 
     double startTime = omp_get_wtime();
     for(int x = 0; x < width; x++) {
@@ -136,13 +139,7 @@ int main (int argc, char *argv[]) {
     tgaImage.type = 0;
 
     for(int i = 0; i < width * height; i++) {
-        u_int16_t n = image[i];
-        RgbColor rgbColor = {0,0,0};
-        if(n != UINT16_MAX){
-            auto h = (unsigned char)(log(1.0 + n) / log(1.0 + maxIterations) * 255);
-            HsvColor hsvColor = { h, 255, 255 };
-            rgbColor = HsvToRgb(hsvColor);
-        }
+        RgbColor rgbColor = image[i];
 
         tgaImage.imageData.push_back(rgbColor.r);
         tgaImage.imageData.push_back(rgbColor.g);
